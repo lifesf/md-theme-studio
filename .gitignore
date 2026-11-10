@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Local converted test packages
+*.zip
+*.archive
+
+# Local preview/browser profiles
+.tmp/
+.edge-profile*/
+*.local.png
+
+# OS metadata
+.DS_Store
+Thumbs.db

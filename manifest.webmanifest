@@ -1,0 +1,18 @@
+{
+  "name": "Morandi Theme Studio — 三格式美化互转",
+  "short_name": "莫兰迪美化",
+  "description": "Reeden (.red)、Archive (.zip) 与 MD3 (.zip) 主题和排版美化互相转换",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1ec",
+  "theme_color": "#f4f1ec",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
