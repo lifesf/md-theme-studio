@@ -111,6 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const dropZone           = $('dropZone');
   const fileInput          = $('fileInput');
+  const isQQBrowser        = /QQ\/|MQQBrowser|QQBrowser/i.test(navigator.userAgent);
+  document.documentElement.classList.toggle('is-qq-browser', isQQBrowser);
   const queueList          = $('queueList');
   const queueCount         = $('queueCount');
   
@@ -631,8 +633,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── File Drag & Drop ─────────────────────────────────────────────
-  // Clicking the drop zone is handled natively by <label for="fileInput">.
-  // Do not also call fileInput.click() here, or mobile browsers open twice.
+  // Normal browsers tap the transparent input directly. QQ's WebView does not
+  // reliably deliver that tap, so it uses a synchronous programmatic click.
+  dropZone.addEventListener('click', e => {
+    if (isQQBrowser && e.target !== fileInput) fileInput.click();
+  });
   dropZone.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();

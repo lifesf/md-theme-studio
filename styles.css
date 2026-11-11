@@ -325,6 +325,19 @@ button { font-family: var(--font); cursor: pointer; border: none; background: no
   font-size: 100px;
 }
 
+/* QQ / MQQBrowser does not reliably fire a tap on an opacity:0 overlay input.
+   Use the old programmatic-click path there instead. */
+html.is-qq-browser .file-input-overlay {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
 .drop-zone {
   display: block;
   overflow: hidden;
