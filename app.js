@@ -3892,6 +3892,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+      const controlsTab = document.querySelector('.m-switcher-btn[data-m-tab="controls"]');
+      if (controlsTab) controlsTab.click();
       setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
     }
   }
