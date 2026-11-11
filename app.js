@@ -353,6 +353,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return hexToArgbInt(fallback);
   }
 
+  function colorAlphaPercent(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return ((value >>> 24) & 0xFF) / 255 * 100;
+    if (!value || typeof value !== 'string') return null;
+    const h = value.trim().replace('#', '');
+    if (h.length === 8) return parseInt(h.slice(0, 2), 16) / 255 * 100;
+    if (h.length === 6 || h.length === 3) return 100;
+    return null;
+  }
+
   function toArgbHex(value, fallback = '#FF000000') {
     if (typeof value === 'number' && Number.isFinite(value)) {
       const hex = argbIntToHex(value);
@@ -2407,6 +2416,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Archive (阅读 Archive) native package ────────────────────────
   function buildArchiveThemeConfig(d, isNight, name, bgName, fontName) {
+    const rawTheme = d && d.raw && d.raw.reeden ? d.raw.reeden.theme : null;
+    const rawSide = rawTheme ? (isNight ? rawTheme.dark : rawTheme.light) : null;
+    const rawCardAlpha = rawSide ? colorAlphaPercent(rawSide.cardColor) : null;
+    const layoutAlpha = rawCardAlpha === null ? (isNight ? 100 : 35) : Math.max(20, Math.min(100, Math.round(rawCardAlpha)));
     const p = isNight ? {
       primary: d.primaryColorDark,
       background: d.backgroundColorDark,
@@ -2450,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', () => {
       uiCornerSearchFollow: true,
       uiFontColor: toCssColor(p.foreground, isNight ? '#E8E4DE' : '#2C2A27'),
       uiFontPath: fontName || '',
-      uiLayoutAlpha: isNight ? 100 : 35
+      uiLayoutAlpha: layoutAlpha
     };
   }
 
