@@ -353,14 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return hexToArgbInt(fallback);
   }
 
-  function colorAlphaPercent(value) {
-    if (typeof value === 'number' && Number.isFinite(value)) return ((value >>> 24) & 0xFF) / 255 * 100;
-    if (!value || typeof value !== 'string') return null;
-    const h = value.trim().replace('#', '');
-    if (h.length === 8) return parseInt(h.slice(0, 2), 16) / 255 * 100;
-    if (h.length === 6 || h.length === 3) return 100;
-    return null;
-  }
 
   function toArgbHex(value, fallback = '#FF000000') {
     if (typeof value === 'number' && Number.isFinite(value)) {
@@ -2464,10 +2456,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Archive (阅读 Archive) native package ────────────────────────
   function buildArchiveThemeConfig(d, isNight, name, bgName, fontName) {
-    const rawTheme = d && d.raw && d.raw.reeden ? d.raw.reeden.theme : null;
-    const rawSide = rawTheme ? (isNight ? rawTheme.dark : rawTheme.light) : null;
-    const rawCardAlpha = rawSide ? colorAlphaPercent(rawSide.cardColor) : null;
-    const layoutAlpha = rawCardAlpha === null ? (isNight ? 100 : 35) : Math.max(20, Math.min(100, Math.round(rawCardAlpha)));
+    // Archive applies uiLayoutAlpha to the whole UI layer, including text.
+    // Any value below 100 blends black text toward the wallpaper and makes it gray.
+    const layoutAlpha = 100;
     const p = isNight ? {
       primary: d.primaryColorDark,
       background: d.backgroundColorDark,
@@ -2503,13 +2494,13 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryColor: toCssColor(p.primary, isNight ? '#9CB09D' : '#8A9E8B'),
       tabBackgroundColor: toCssColor(p.card, isNight ? '#2C343A' : '#FFFFFF'),
       themeName: name,
-      titleFontColor: toCssColor(readableTextColor(p.foreground, p.background, isNight ? '#E8E4DE' : '#2C2A27'), isNight ? '#E8E4DE' : '#2C2A27'),
+      titleFontColor: isNight ? toCssColor(p.foreground, '#E8E4DE') : '#000000',
       titleFontPath: fontName || '',
       transparentNavBar: true,
       uiCornerReplyFollow: true,
       uiCornerScale: 1.0,
       uiCornerSearchFollow: true,
-      uiFontColor: toCssColor(p.foreground, isNight ? '#E8E4DE' : '#2C2A27'),
+      uiFontColor: isNight ? toCssColor(p.foreground, '#E8E4DE') : '#000000',
       uiFontPath: fontName || '',
       uiLayoutAlpha: layoutAlpha
     };
