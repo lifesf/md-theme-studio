@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportFormat: 'md3', // 'md3' | 'archive' | 'reeden'
     reedenPair: { uiId: null, readerId: null },
     calibration: {
-      itemId: null, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+      itemId: null, offset: 0, bodyBottom: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
       headerLeft: '', headerMiddle: '', headerRight: '',
       footerLeft: '', footerMiddle: '', footerRight: '',
       guides: true
@@ -166,6 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const calFormatBadge     = $('calFormatBadge');
   const calOffset          = $('calOffset');
   const calOffsetValue     = $('calOffsetValue');
+  const calBodyBottomOffset = $('calBodyBottomOffset');
+  const calBodyBottomOffsetValue = $('calBodyBottomOffsetValue');
   const calHeaderOffset    = $('calHeaderOffset');
   const calHeaderOffsetValue = $('calHeaderOffsetValue');
   const calFooterOffset    = $('calFooterOffset');
@@ -662,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   bindCalibrationSlider(calHeaderOffset, calHeaderOffsetValue, 'headerOffset');
   bindCalibrationSlider(calFooterOffset, calFooterOffsetValue, 'footerOffset');
+  bindCalibrationSlider(calBodyBottomOffset, calBodyBottomOffsetValue, 'bodyBottom');
   const bindTipInput = (el, key) => {
     if (!el) return;
     el.addEventListener('change', () => {
@@ -690,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = state.queue.find(q => q.id === state.activeId);
       if (!item) return;
       state.calibration = {
-        itemId: item.id, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+        itemId: item.id, offset: 0, bodyBottom: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
         headerLeft: '', headerMiddle: '', headerRight: '',
         footerLeft: '', footerMiddle: '', footerRight: '', guides: true
       };
@@ -2388,7 +2391,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function calibrationFor(item) {
     if (!item || state.calibration.itemId !== item.id) {
       return {
-        itemId: item ? item.id : null, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+        itemId: item ? item.id : null, offset: 0, bodyBottom: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
         headerLeft: '', headerMiddle: '', headerRight: '',
         footerLeft: '', footerMiddle: '', footerRight: '',
         guides: true
@@ -2464,6 +2467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     readerBody.style.transform = `translateY(${cal.offset * scale}px)`;
     readerBody.style.paddingLeft = '0';
     readerBody.style.paddingRight = '0';
+    readerBody.style.paddingBottom = px(cal.bodyBottom);
 
     const tipContext = {
       BookName: readerData.name || item.name || '示例图书',
@@ -2550,6 +2554,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (calOffset) calOffset.value = String(cal.offset);
     if (calOffsetValue) calOffsetValue.textContent = `${cal.offset > 0 ? '+' : ''}${cal.offset}`;
+    if (calBodyBottomOffset) calBodyBottomOffset.value = String(cal.bodyBottom || 0);
+    if (calBodyBottomOffsetValue) calBodyBottomOffsetValue.textContent = `${(cal.bodyBottom || 0) > 0 ? '+' : ''}${cal.bodyBottom || 0}`;
     if (calTitleOffset) calTitleOffset.value = String(cal.titleOffset);
     if (calTitleOffsetValue) calTitleOffsetValue.textContent = `${cal.titleOffset > 0 ? '+' : ''}${cal.titleOffset}`;
     if (calHeaderOffset) calHeaderOffset.value = String(cal.headerOffset);
@@ -3181,6 +3187,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const src = r.readConfig || {};
     const l = r.layoutConfig || {};
     const red = r.sourceFormat === 'reeden' ? redLayoutMetrics(l) : null;
+    const bodySize = red ? red.fontSize : Number(src.textSize ?? l.fontSize ?? 16);
+    const titleDelta = r.sourceFormat === 'archive'
+      ? Math.max(0, Number(src.titleSize ?? 4))
+      : red
+        ? Math.max(0, Number(red.titleSize || 0) - Number(red.fontSize || 0))
+        : Math.max(0, Number(src.titleSize ?? l.titleSize ?? 4) - bodySize);
     return {
       bgAlpha: 100,
       bgStr: bgFilename || '',
@@ -3229,7 +3241,7 @@ document.addEventListener('DOMContentLoaded', () => {
       textColorEInk: '#000000',
       textColorNight: toArgbHex(r.textColorNight || src.textColorNight, '#FFADADAD'),
       textFont: '',
-      textSize: red ? red.fontSize : Number(src.textSize ?? l.fontSize ?? 16),
+      textSize: bodySize,
       tipColor: 0,
       tipDividerColor: -1,
       tipFooterLeft: 7,
@@ -3240,10 +3252,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tipHeaderRight: 0,
       titleBottomSpacing: red ? red.titleBottom : nonNegative(src.titleBottomSpacing ?? l.titleBottomSpacing, 26),
       titleMode: red ? red.titleMode : ([0, 1, 2].includes(Number(src.titleMode)) ? Number(src.titleMode) : 1),
-      titleSize: red ? red.titleSize : (() => {
-        const value = Number(src.titleSize ?? l.titleSize);
-        return Number.isFinite(value) && value >= 8 && value <= 60 ? value : 22;
-      })(),
+      titleSize: titleDelta,
       titleTopSpacing: red ? red.titleTop : nonNegative(src.titleTopSpacing ?? l.titleTopSpacing, 0),
       underlineDashLength: 6.0,
       underlineMode: 0,
@@ -3255,10 +3264,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!cfg || !item || state.calibration.itemId !== item.id) return cfg;
     const cal = state.calibration;
     const offset = Number(cal.offset) || 0;
+    const bodyBottom = Number(cal.bodyBottom) || 0;
     const titleOffset = Number(cal.titleOffset) || 0;
     const headerOffset = Number(cal.headerOffset) || 0;
     const footerOffset = Number(cal.footerOffset) || 0;
     if (offset) cfg.paddingTop = Math.max(0, Number(cfg.paddingTop || 0) + offset);
+    if (bodyBottom) cfg.paddingBottom = Math.max(0, Number(cfg.paddingBottom || 0) + bodyBottom);
     if (titleOffset) cfg.titleTopSpacing = Math.max(0, Number(cfg.titleTopSpacing || 0) + titleOffset);
     if (headerOffset) cfg.headerPaddingTop = Math.max(0, Number(cfg.headerPaddingTop || 0) + headerOffset);
     if (footerOffset) cfg.footerPaddingBottom = Math.max(0, Number(cfg.footerPaddingBottom || 0) + footerOffset);

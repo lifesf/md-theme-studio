@@ -48,7 +48,7 @@ Reeden 输出为单个 `.red`，会同时写入主题、导航图标、封面和
 ## ✨ 界面
 
 - 三目标格式切换：**MD3 / Archive / Reeden**
-- **排版校准预览**：阅读预览按源格式的 `paddingTop / headerPadding / titleTop / footer` 渲染，自动检测背景图像焦点并显示参考线；可分别校准页眉位置、页脚位置、标题间距、正文位置，并编辑页眉/页脚左中右信息模板（支持 `{ChapterTitle}` `{BookName}` `{Time}` `{PageIndex}` `{PageSize}` 等占位符）。校准会写入导出的 MD3 / Archive 排版字段；自定义页眉页脚对应 MD3 的 `tipHeader*=18 / customTipHeader*`
+- **排版校准预览**：阅读预览按源格式的 `paddingTop / headerPadding / titleTop / footer` 渲染，自动检测背景图像焦点并显示参考线；可分别校准页眉位置、页脚位置、标题间距、正文上边距、正文下边距，并编辑页眉/页脚左中右信息模板（支持 `{ChapterTitle}` `{BookName}` `{Time}` `{PageIndex}` `{PageSize}` 等占位符）。校准会写入导出的 MD3 / Archive 排版字段；自定义页眉页脚对应 MD3 的 `tipHeader*=18 / customTipHeader*`
 - **转 Red 独立双文件打包**：选择 Reeden 后会出现「主题来源 / 排版来源」两个下拉框，可分别选择任意已导入的 Arc / MD3 / Reeden 文件，再合并成一个 `.red`；不再依赖当前只选中一个文件去猜配对
 - 主题美化、排版美化分别显示识别状态与队列配对来源
 - 一键导出主题 + 排版（MD3 / Archive 为两个原生 ZIP，Reeden 为一个 `.red`）
@@ -62,6 +62,7 @@ Reeden 输出为单个 `.red`，会同时写入主题、导航图标、封面和
 - MD3 ↔ Archive 的 `titleSize`、`titleMode`、`paddingTop` 按各自单位换算，不再混用；Archive 输出避免使用需要额外 Lottie 资源的 `titleMode 3`。
 - Reeden 输出使用 Reeden 自己的 `-1 / defaults` 自动行距、段距、字距。
 - Reeden → Reeden 会保留原始 `theme.json` 的 alpha 颜色和额外字段，写入日/夜两套 `reader_schema` 与两张 `bg.img`，封面按真实格式（PNG/JPEG）命名；不再只写一套 schema。
+- Archive APK 的 `titleSize` 是**相对正文字号的增量**（`titlePx = textSize + titleSize`），导出时写入增量而不是绝对字号。
 - 排版背景图导出时按内容 MD5 生成唯一文件名（如 `bg_f9a37d5788f0db29.jpg`），避免目标软件 `files/bg/` 里已有同名 `bg_reader.jpg` 时不覆盖旧图，导致“网页预览对、导入后背景不对”。
 
 ---
