@@ -334,6 +334,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return '#' + (value >>> 0).toString(16).padStart(8, '0').toUpperCase();
   }
 
+  function colorLuminance(value) {
+    const hex = argbIntToHex(hexToArgbInt(value)).slice(1);
+    const channels = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const linear = channels.map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  }
+
+  function contrastRatio(a, b) {
+    const la = colorLuminance(a);
+    const lb = colorLuminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function readableTextColor(rawValue, background, fallback) {
+    const candidate = rawValue ? hexToArgbInt(rawValue) : null;
+    if (candidate && contrastRatio(candidate, background) >= 3.0) return candidate;
+    return hexToArgbInt(fallback);
+  }
+
   function toArgbHex(value, fallback = '#FF000000') {
     if (typeof value === 'number' && Number.isFinite(value)) {
       const hex = argbIntToHex(value);
@@ -4008,10 +4027,10 @@ document.addEventListener('DOMContentLoaded', () => {
       overrideBaseCardBorder: false,
       overrideBaseCardCornerRadius: true,
       paletteStyle: 'tonalSpot',
-      primaryTextColor: rawColor(rawLight.foregroundColor, '#000000'),
-      primaryTextColorNight: rawColor(rawDark.foregroundColor, '#FFFFFF'),
-      secondaryTextColor: rawColor(rawLight.mutedForegroundColor, '#3E3D3B'),
-      secondaryTextColorNight: rawColor(rawDark.mutedForegroundColor, '#B6B6B6'),
+      primaryTextColor: readableTextColor(rawLight.foregroundColor, rawLight.backgroundColor || d.backgroundColor, '#000000'),
+      primaryTextColorNight: readableTextColor(rawDark.foregroundColor, rawDark.backgroundColor || d.backgroundColorDark, '#FFFFFF'),
+      secondaryTextColor: readableTextColor(rawLight.mutedForegroundColor, rawLight.backgroundColor || d.backgroundColor, '#3E3D3B'),
+      secondaryTextColorNight: readableTextColor(rawDark.mutedForegroundColor, rawDark.backgroundColor || d.backgroundColorDark, '#B6B6B6'),
       secondaryThemeColor: hexToArgbInt(d.primaryColor),
       secondaryThemeColorNight: hexToArgbInt(d.primaryColorDark),
       selectedCoverAlbumId: '',
