@@ -299,6 +299,29 @@
         </button>
       </div>
 
+      <div class="layout-calibration" id="layoutCalibration" style="display:none">
+        <div class="cal-head">
+          <span><i class="fa-solid fa-ruler-combined"></i> 排版校准</span>
+          <span class="cal-format" id="calFormatBadge">MD3</span>
+        </div>
+        <label class="cal-slider">
+          <span>文字块纵向</span>
+          <input type="range" id="calOffset" min="-80" max="80" step="1" value="0">
+          <b id="calOffsetValue">0</b>
+        </label>
+        <label class="cal-slider">
+          <span>标题间距</span>
+          <input type="range" id="calTitleOffset" min="-40" max="40" step="1" value="0">
+          <b id="calTitleOffsetValue">0</b>
+        </label>
+        <div class="cal-actions">
+          <button type="button" id="calGuidesBtn"><i class="fa-solid fa-border-all"></i> 参考线</button>
+          <button type="button" id="calAutoBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> 对齐背景焦点</button>
+          <button type="button" id="calResetBtn">重置</button>
+        </div>
+        <p class="cal-note" id="calNote">参考线用于对齐背景主体、标题和正文位置。</p>
+      </div>
+
       <!-- Phone Mockup -->
       <div class="phone-wrapper">
         <div class="phone-frame">
@@ -394,6 +417,7 @@
                     <span id="readerBookName">示例图书</span>
                     <span id="readerProgress">12 / 345 页 (4%)</span>
                   </div>
+                  <div class="reader-guides" id="readerGuides" style="display:none;"></div>
                 </div>
               </div>
 

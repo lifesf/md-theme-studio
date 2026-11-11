@@ -806,6 +806,79 @@ html.is-qq-browser .file-input-overlay {
 }
 
 /* ── Phone Wrapper & Frame ────────────────────────────────────── */
+.layout-calibration {
+  width: 100%;
+  max-width: 410px;
+  margin: 8px auto 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  position: relative;
+  z-index: 2;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  font-weight: 650;
+  color: var(--txt-mid);
+  margin-bottom: 6px;
+}
+
+.cal-format {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--sage-lt);
+  color: var(--sage-dk);
+  font-size: 7.5px;
+  font-weight: 700;
+}
+
+.cal-slider {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 8px;
+  color: var(--txt-muted);
+}
+
+.cal-slider input { width: 100%; accent-color: var(--sage-dk); }
+.cal-slider b { font-size: 8px; text-align: right; color: var(--txt-mid); font-weight: 600; }
+
+.cal-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.cal-actions button {
+  flex: 1;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-alt);
+  color: var(--txt-mid);
+  border-radius: 7px;
+  padding: 5px 4px;
+  font-family: var(--font);
+  font-size: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-actions button:hover { border-color: var(--sage); color: var(--sage-dk); }
+.cal-actions button.is-active { border-color: var(--sage); color: var(--sage-dk); background: var(--sage-lt); }
+
+.cal-note {
+  margin: 6px 1px 0;
+  font-size: 7.5px;
+  line-height: 1.5;
+  color: var(--txt-muted);
+}
+
 .phone-wrapper {
   display: flex;
   justify-content: center;
@@ -1161,8 +1234,44 @@ html.is-qq-browser .file-input-overlay {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
+  padding: 0;
+  position: relative;
+  z-index: 1;
 }
+
+.reader-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.guide-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(196, 92, 74, 0.78);
+}
+
+.guide-line span {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 6.5px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(196, 92, 74, 0.86);
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.guide-line.focus {
+  border-top-style: solid;
+  border-top-color: rgba(67, 122, 156, 0.8);
+}
+
+.guide-line.focus span { background: rgba(67, 122, 156, 0.88); }
 
 .reader-chapter-title {
   font-size: 15px;
@@ -2701,6 +2810,7 @@ body {
 
 /* ── Responsive Mobile (< 768px) ──────────────────────────────── */
 @media (max-width: 768px) {
+  .layout-calibration { max-width: 100%; margin: 7px 0 2px; }
   .navbar {
     height: 58px;
     padding: 0 16px;

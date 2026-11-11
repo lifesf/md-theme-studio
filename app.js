@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     activeId: null,
     batchMode: 'full',
     exportFormat: 'md3', // 'md3' | 'archive' | 'reeden'
-    reedenPair: { uiId: null, readerId: null }
+    reedenPair: { uiId: null, readerId: null },
+    calibration: { itemId: null, offset: 0, titleOffset: 0, guides: true }
   };
 
   const REEDEN_LAYOUT_DEFAULTS = {
@@ -153,6 +154,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Reader Screen Elements
   const readerScreen       = $('readerScreen');
   const readerBody         = $('readerBody');
+  const readerHeader       = $('readerHeader');
+  const readerFooter       = $('readerFooter');
+  const readerGuides       = $('readerGuides');
+  const layoutCalibration  = $('layoutCalibration');
+  const calFormatBadge     = $('calFormatBadge');
+  const calOffset          = $('calOffset');
+  const calOffsetValue     = $('calOffsetValue');
+  const calTitleOffset     = $('calTitleOffset');
+  const calTitleOffsetValue= $('calTitleOffsetValue');
+  const calGuidesBtn       = $('calGuidesBtn');
+  const calAutoBtn         = $('calAutoBtn');
+  const calResetBtn        = $('calResetBtn');
+  const calNote            = $('calNote');
   const readerBookName     = $('readerBookName');
   const readerTitleText    = $('readerTitleText');
 
@@ -568,6 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (panelLeft) panelLeft.dataset.target = state.exportFormat;
     updateExportPanel();
+    const active = state.queue.find(q => q.id === state.activeId);
+    if (active && state.activeTab === 'reader') applyPreview(active);
     if (persist) saveCacheState();
   }
 
@@ -593,6 +609,60 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (reedenAddFilesBtn) {
     reedenAddFilesBtn.addEventListener('click', () => fileInput.click());
+  }
+
+  if (calOffset) {
+    calOffset.addEventListener('input', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      state.calibration = { ...calibrationFor(item), itemId: item.id, offset: Number(calOffset.value) };
+      if (calOffsetValue) calOffsetValue.textContent = `${state.calibration.offset > 0 ? '+' : ''}${state.calibration.offset}`;
+      applyPreview(item);
+    });
+  }
+  if (calTitleOffset) {
+    calTitleOffset.addEventListener('input', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      state.calibration = { ...calibrationFor(item), itemId: item.id, titleOffset: Number(calTitleOffset.value) };
+      if (calTitleOffsetValue) calTitleOffsetValue.textContent = `${state.calibration.titleOffset > 0 ? '+' : ''}${state.calibration.titleOffset}`;
+      applyPreview(item);
+    });
+  }
+  if (calGuidesBtn) {
+    calGuidesBtn.addEventListener('click', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      state.calibration = { ...calibrationFor(item), itemId: item.id, guides: !calibrationFor(item).guides };
+      applyPreview(item);
+    });
+  }
+  if (calResetBtn) {
+    calResetBtn.addEventListener('click', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      state.calibration = { itemId: item.id, offset: 0, titleOffset: 0, guides: true };
+      applyPreview(item);
+    });
+  }
+  if (calAutoBtn) {
+    calAutoBtn.addEventListener('click', async () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item || !item.parsedReader) return;
+      const isNight = state.mockupMode === 'dark';
+      await applyReaderGeometry(item, item.parsedReader, isNight);
+      requestAnimationFrame(() => {
+        const focus = item.parsedReader._focus;
+        const titleRect = readerTitleText ? readerTitleText.getBoundingClientRect() : null;
+        const screenRect = readerScreen.getBoundingClientRect();
+        if (!focus || !titleRect || !screenRect.height) return;
+        const desired = screenRect.top + (focus.top + 0.08 * (focus.bottom - focus.top)) * screenRect.height;
+        const deltaPx = desired - titleRect.top;
+        const next = Math.max(-80, Math.min(80, Math.round(deltaPx / 0.55)));
+        state.calibration = { ...calibrationFor(item), itemId: item.id, offset: next };
+        applyPreview(item);
+      });
+    });
   }
 
   // ── App Day/Night Toggle ─────────────────────────────────────────
@@ -637,6 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
       $$('.tab-pane').forEach(p => p.style.display = 'none');
       const pane = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
       if (pane) pane.style.display = 'block';
+
+      if (layoutCalibration) {
+        layoutCalibration.style.display = tab === 'reader' ? 'block' : 'none';
+      }
 
       // Hide Phone Statusbar, TopBar & Bottom NavBar when viewing Reader Typesetting Preview tab
       const phoneStatusbar = $('phoneStatusbar');
@@ -2259,6 +2333,151 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Apply Preview to Phone Mockup ─────────────────────────────────
+  function calibrationFor(item) {
+    if (!item || state.calibration.itemId !== item.id) {
+      return { itemId: item ? item.id : null, offset: 0, titleOffset: 0, guides: true };
+    }
+    return state.calibration;
+  }
+
+  async function computeBackgroundFocus(blob) {
+    if (!blob) return null;
+    let bitmap;
+    try { bitmap = await createImageBitmap(blob); } catch (e) { return null; }
+    const w = 32;
+    const h = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const rowEnergy = [];
+    for (let y = 0; y < h; y++) {
+      let sum = 0;
+      let sum2 = 0;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        sum += lum;
+        sum2 += lum * lum;
+      }
+      const mean = sum / w;
+      rowEnergy.push(Math.sqrt(Math.max(0, sum2 / w - mean * mean)));
+    }
+    const max = Math.max(...rowEnergy, 1);
+    const threshold = max * 0.38;
+    let top = 0;
+    let bottom = h;
+    for (let y = 0; y < h; y++) if (rowEnergy[y] >= threshold) { top = y; break; }
+    for (let y = h - 1; y >= 0; y--) if (rowEnergy[y] >= threshold) { bottom = y + 1; break; }
+    if (bottom <= top) { top = Math.floor(h * 0.25); bottom = Math.ceil(h * 0.75); }
+    return { top: top / h, bottom: bottom / h };
+  }
+
+  async function applyReaderGeometry(item, readerData, isNight) {
+    if (!readerData) return;
+    const rc = readerData.readConfig || {};
+    const l = readerData.layoutConfig || {};
+    const isRed = item.sourceFormat === 'reeden';
+    const scale = 0.55;
+    const px = value => `${Math.max(0, Number(value) || 0) * scale}px`;
+    const headerTop = isRed ? l.headerPaddingTop : rc.headerPaddingTop;
+    const headerBottom = isRed ? l.headerPaddingBottom : rc.headerPaddingBottom;
+    const bodyLeft = isRed ? l.paddingLeft : rc.paddingLeft;
+    const bodyRight = isRed ? l.paddingRight : rc.paddingRight;
+    const titleTop = isRed ? l.titleMarginTop : rc.titleTopSpacing;
+    const titleBottom = isRed ? l.titlePaddingBottom : rc.titleBottomSpacing;
+    const footerBottom = isRed ? l.footerPaddingBottom : rc.footerPaddingBottom;
+    const cal = calibrationFor(item);
+
+    readerScreen.style.paddingTop = px(headerTop);
+    readerScreen.style.paddingLeft = px(bodyLeft);
+    readerScreen.style.paddingRight = px(bodyRight);
+    readerScreen.style.paddingBottom = px(footerBottom);
+    if (readerHeader) {
+      readerHeader.style.paddingTop = '0';
+      readerHeader.style.paddingBottom = px(headerBottom);
+    }
+    if (readerTitleText) {
+      readerTitleText.style.marginTop = px(titleTop);
+      readerTitleText.style.marginBottom = px(titleBottom);
+    }
+    readerBody.style.transform = `translateY(${cal.offset * scale}px)`;
+    readerBody.style.paddingLeft = '0';
+    readerBody.style.paddingRight = '0';
+
+    const bgBlob = isNight && readerData.bgDarkBlob ? readerData.bgDarkBlob : readerData.bgBlob;
+    const focusKey = bgBlob ? `${bgBlob.size}:${isNight ? 'n' : 'd'}` : '';
+    if (bgBlob && readerData._focusKey !== focusKey) {
+      readerData._focusKey = focusKey;
+      readerData._focus = await computeBackgroundFocus(bgBlob);
+    }
+    if (readerData._focus) {
+      const center = Math.round(((readerData._focus.top + readerData._focus.bottom) / 2) * 100);
+      readerScreen.style.backgroundPosition = `50% ${center}%`;
+    }
+    state.calibration.itemId = item.id;
+    state.calibration.offset = cal.offset;
+    state.calibration.titleOffset = cal.titleOffset;
+    state.calibration.guides = cal.guides;
+    renderReaderGuides(item, readerData);
+    requestAnimationFrame(() => renderReaderGuides(item, readerData));
+    updateCalibrationUI(item);
+  }
+
+  function renderReaderGuides(item, readerData) {
+    if (!readerGuides) return;
+    if (!state.calibration.guides) {
+      readerGuides.style.display = 'none';
+      readerGuides.innerHTML = '';
+      return;
+    }
+    const screenRect = readerScreen.getBoundingClientRect();
+    if (!screenRect.height) return;
+    readerGuides.style.display = 'block';
+    const lines = [];
+    const addLine = (ratio, label, cls = '') => {
+      if (!Number.isFinite(ratio)) return;
+      lines.push(`<div class="guide-line ${cls}" style="top:${Math.max(0, Math.min(100, ratio * 100))}%"><span>${label}</span></div>`);
+    };
+    if (readerData._focus) {
+      addLine(readerData._focus.top, '背景焦点上', 'focus');
+      addLine(readerData._focus.bottom, '背景焦点下', 'focus');
+    }
+    const titleRect = readerTitleText ? readerTitleText.getBoundingClientRect() : null;
+    if (titleRect) addLine((titleRect.top - screenRect.top) / screenRect.height, '标题');
+    const p1 = $('readerPara1');
+    if (p1) addLine((p1.getBoundingClientRect().top - screenRect.top) / screenRect.height, '正文');
+    const footerRect = readerFooter ? readerFooter.getBoundingClientRect() : null;
+    if (footerRect) addLine((footerRect.top - screenRect.top) / screenRect.height, '页脚');
+    readerGuides.innerHTML = lines.join('');
+  }
+
+  function updateCalibrationUI(item) {
+    if (!layoutCalibration) return;
+    const cal = calibrationFor(item);
+    state.calibration = { itemId: item ? item.id : null, offset: cal.offset, titleOffset: cal.titleOffset, guides: cal.guides };
+    if (calFormatBadge) {
+      const sourceLabel = (item && item.sourceFormat ? item.sourceFormat : 'auto').toUpperCase();
+      const targetLabel = (FORMAT_META[state.exportFormat] || FORMAT_META.md3).label.toUpperCase();
+      calFormatBadge.textContent = `${sourceLabel} → ${targetLabel}`;
+    }
+    if (calOffset) calOffset.value = String(cal.offset);
+    if (calOffsetValue) calOffsetValue.textContent = `${cal.offset > 0 ? '+' : ''}${cal.offset}`;
+    if (calTitleOffset) calTitleOffset.value = String(cal.titleOffset);
+    if (calTitleOffsetValue) calTitleOffsetValue.textContent = `${cal.titleOffset > 0 ? '+' : ''}${cal.titleOffset}`;
+    if (calGuidesBtn) calGuidesBtn.classList.toggle('is-active', cal.guides);
+    if (calNote) {
+      const focus = item && item.parsedReader && item.parsedReader._focus;
+      calNote.textContent = focus
+        ? `背景焦点 ${Math.round(focus.top * 100)}%–${Math.round(focus.bottom * 100)}%，拖动滑块校准正文块。`
+        : '参考线用于对齐背景主体、标题和正文位置。';
+    }
+    if (state.activeTab !== 'reader') layoutCalibration.style.display = 'none';
+  }
+
   function applyPreview(item) {
     if (!item) return;
     const uiData = item.parsedUi;
@@ -2395,6 +2614,8 @@ document.addEventListener('DOMContentLoaded', () => {
       $('metaReaderBg').textContent = (readerData.bgBlobUrl ? '背景图' : '基础色') + (hasCustomFont ? ' + 提取字体' : '');
       const metaHl = $('metaHighlights');
       if (metaHl) metaHl.textContent = (hasHighlightImage ? '已提取' : '无');
+      applyReaderGeometry(item, readerData, isNight);
+      updateCalibrationUI(item);
     }
 
     // Metadata
@@ -2936,6 +3157,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  function applyCalibrationToReadConfig(cfg, item) {
+    if (!cfg || !item || state.calibration.itemId !== item.id) return cfg;
+    const offset = Number(state.calibration.offset) || 0;
+    const titleOffset = Number(state.calibration.titleOffset) || 0;
+    if (offset) cfg.paddingTop = Math.max(0, Number(cfg.paddingTop || 0) + offset);
+    if (titleOffset) cfg.titleTopSpacing = Math.max(0, Number(cfg.titleTopSpacing || 0) + titleOffset);
+    return cfg;
+  }
+
   async function generateArchiveReaderBlob(readerItem) {
     const r = readerItem && readerItem.parsedReader;
     if (!r) return null;
@@ -2965,6 +3195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       cfg = buildArchiveReadConfig(r, name, bgFilename, bgDarkFilename);
     }
+    applyCalibrationToReadConfig(cfg, readerItem);
     zip.file('readConfig.json', JSON.stringify(cfg, null, 2));
     return await zip.generateAsync({
       type: 'blob',
@@ -3730,6 +3961,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cfg.bgStrNight = bgDarkFilename;
         cfg.bgTypeNight = 2;
       }
+      applyCalibrationToReadConfig(cfg, item);
       zip.file('readConfig.json', JSON.stringify(cfg, null, 2));
       return await zip.generateAsync({ type: 'blob' });
     }
@@ -3939,6 +4171,7 @@ document.addEventListener('DOMContentLoaded', () => {
       readConfig.tipHeaderRight = m.tipHeaderRight;
     }
 
+    applyCalibrationToReadConfig(readConfig, item);
     zip.file('readConfig.json', JSON.stringify(readConfig, null, 2));
     return await zip.generateAsync({ type: 'blob' });
   }

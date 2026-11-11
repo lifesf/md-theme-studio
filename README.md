@@ -48,6 +48,7 @@ Reeden 输出为单个 `.red`，会同时写入主题、导航图标、封面和
 ## ✨ 界面
 
 - 三目标格式切换：**MD3 / Archive / Reeden**
+- **排版校准预览**：阅读预览按源格式的 `paddingTop / headerPadding / titleTop / footer` 渲染，自动检测背景图像焦点并显示参考线；可校准文字块纵向和标题间距，偏移会写入导出的 MD3 / Archive `paddingTop / titleTopSpacing`
 - **转 Red 独立双文件打包**：选择 Reeden 后会出现「主题来源 / 排版来源」两个下拉框，可分别选择任意已导入的 Arc / MD3 / Reeden 文件，再合并成一个 `.red`；不再依赖当前只选中一个文件去猜配对
 - 主题美化、排版美化分别显示识别状态与队列配对来源
 - 一键导出主题 + 排版（MD3 / Archive 为两个原生 ZIP，Reeden 为一个 `.red`）
