@@ -1338,6 +1338,51 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Recover theme colors when the theme JSON is too large / malformed.
+    if (!themeMeta || !themeMeta.light || !themeMeta.light.foregroundColor) {
+      const lightAt = text.lastIndexOf('"light":{');
+      if (lightAt >= 0) {
+        const darkAt = text.indexOf('"dark":{', lightAt);
+        const lightSlice = text.slice(lightAt, darkAt > lightAt ? darkAt : lightAt + 400000);
+        const darkSlice = darkAt >= 0 ? text.slice(darkAt, darkAt + 400000) : '';
+        const readTheme = (slice, key) => slice ? looseString(slice, key) : null;
+        const light = {
+          primaryColor: readTheme(lightSlice, 'primaryColor'),
+          backgroundColor: readTheme(lightSlice, 'backgroundColor'),
+          foregroundColor: readTheme(lightSlice, 'foregroundColor'),
+          mutedForegroundColor: readTheme(lightSlice, 'mutedForegroundColor'),
+          cardColor: readTheme(lightSlice, 'cardColor'),
+          accentColor: readTheme(lightSlice, 'accentColor'),
+          borderColor: readTheme(lightSlice, 'borderColor'),
+          tabBackgroundColor: readTheme(lightSlice, 'tabBackgroundColor'),
+          backgroundImage: readTheme(lightSlice, 'backgroundImage'),
+          coverGalleryId: readTheme(lightSlice, 'coverGalleryId'),
+          navbarPackId: readTheme(lightSlice, 'navbarPackId'),
+          readerColorSchemaId: readTheme(lightSlice, 'readerColorSchemaId')
+        };
+        const dark = darkSlice ? {
+          primaryColor: readTheme(darkSlice, 'primaryColor'),
+          backgroundColor: readTheme(darkSlice, 'backgroundColor'),
+          foregroundColor: readTheme(darkSlice, 'foregroundColor'),
+          mutedForegroundColor: readTheme(darkSlice, 'mutedForegroundColor'),
+          cardColor: readTheme(darkSlice, 'cardColor'),
+          accentColor: readTheme(darkSlice, 'accentColor'),
+          borderColor: readTheme(darkSlice, 'borderColor'),
+          backgroundImage: readTheme(darkSlice, 'backgroundImage'),
+          coverGalleryId: readTheme(darkSlice, 'coverGalleryId'),
+          navbarPackId: readTheme(darkSlice, 'navbarPackId'),
+          readerColorSchemaId: readTheme(darkSlice, 'readerColorSchemaId')
+        } : {};
+        if (light.foregroundColor || light.primaryColor) {
+          themeMeta = {
+            name: themeMeta && themeMeta.name ? themeMeta.name : '',
+            light: { ...(themeMeta && themeMeta.light ? themeMeta.light : {}), ...light },
+            dark: { ...(themeMeta && themeMeta.dark ? themeMeta.dark : {}), ...dark }
+          };
+        }
+      }
+    }
+
     const isLightText = value => {
       const css = toCssColor(value, '#000000').replace('#', '');
       const r = parseInt(css.slice(0, 2), 16) || 0;
@@ -2494,13 +2539,13 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryColor: toCssColor(p.primary, isNight ? '#9CB09D' : '#8A9E8B'),
       tabBackgroundColor: toCssColor(p.card, isNight ? '#2C343A' : '#FFFFFF'),
       themeName: name,
-      titleFontColor: isNight ? toCssColor(p.foreground, '#E8E4DE') : '#000000',
+      titleFontColor: toCssColor(p.foreground, isNight ? '#E8E4DE' : '#2C2A27'),
       titleFontPath: fontName || '',
       transparentNavBar: true,
       uiCornerReplyFollow: true,
       uiCornerScale: 1.0,
       uiCornerSearchFollow: true,
-      uiFontColor: isNight ? toCssColor(p.foreground, '#E8E4DE') : '#000000',
+      uiFontColor: toCssColor(p.foreground, isNight ? '#E8E4DE' : '#2C2A27'),
       uiFontPath: fontName || '',
       uiLayoutAlpha: layoutAlpha
     };
