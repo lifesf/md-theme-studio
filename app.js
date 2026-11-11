@@ -639,13 +639,18 @@ document.addEventListener('DOMContentLoaded', () => {
       fileInput.click();
     }
   });
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-  });
+  fileInput.addEventListener('click', e => e.stopPropagation());
+  const bindDrop = target => {
+    target.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    target.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    target.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+  };
+  bindDrop(dropZone);
+  bindDrop(fileInput);
   fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); });
 
   async function handleFiles(files) {
@@ -3864,8 +3869,31 @@ document.addEventListener('DOMContentLoaded', () => {
       <a href="${url}" download="${safeFilename}" class="btn-dl-now" title="下载 ${safeFilename}">
         <i class="fa-solid fa-download"></i><span>下载</span>
       </a>
+      <a href="${url}" target="_blank" rel="noopener" class="btn-dl-open" title="打开 ${safeFilename}">
+        打开
+      </a>
+      ${typeof navigator.share === 'function' ? '<button type="button" class="btn-dl-open btn-dl-share">分享</button>' : ''}
     `;
     list.prepend(card);
+    const shareBtn = card.querySelector('.btn-dl-share');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        try {
+          const blob = await fetch(url).then(response => response.blob());
+          const file = new File([blob], filename, { type: blob.type || 'application/zip' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: filename });
+          } else {
+            window.open(url, '_blank', 'noopener');
+          }
+        } catch (e) {
+          window.open(url, '_blank', 'noopener');
+        }
+      });
+    }
+    if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+      setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
+    }
   }
 
   function showExportTip(result) {
