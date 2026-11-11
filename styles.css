@@ -837,9 +837,55 @@ html.is-qq-browser .file-input-overlay {
   font-weight: 700;
 }
 
+.cal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+}
+
+.cal-tips {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.cal-tip-title {
+  margin: 4px 0 3px;
+  font-size: 7.5px;
+  font-weight: 650;
+  color: var(--txt-mid);
+}
+
+.cal-tip-title small {
+  font-weight: 400;
+  color: var(--txt-muted);
+  font-size: 6.5px;
+}
+
+.cal-tip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+
+.cal-tip-grid input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--bg-alt);
+  color: var(--txt);
+  font-family: var(--font);
+  font-size: 7px;
+  padding: 4px 5px;
+  outline: none;
+}
+
+.cal-tip-grid input:focus { border-color: var(--sage); }
+
 .cal-slider {
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 28px;
+  grid-template-columns: 54px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 6px;
   margin-top: 5px;
@@ -1225,6 +1271,12 @@ html.is-qq-browser .file-input-overlay {
   opacity: 0.65;
   margin-bottom: 12px;
   padding-top: 2px;
+}
+
+.reader-header span:nth-child(2),
+.reader-footer span:nth-child(2) {
+  flex: 1;
+  text-align: center;
 }
 
 .reader-body {

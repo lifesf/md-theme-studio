@@ -17,7 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
     batchMode: 'full',
     exportFormat: 'md3', // 'md3' | 'archive' | 'reeden'
     reedenPair: { uiId: null, readerId: null },
-    calibration: { itemId: null, offset: 0, titleOffset: 0, guides: true }
+    calibration: {
+      itemId: null, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+      headerLeft: '', headerMiddle: '', headerRight: '',
+      footerLeft: '', footerMiddle: '', footerRight: '',
+      guides: true
+    }
   };
 
   const REEDEN_LAYOUT_DEFAULTS = {
@@ -161,8 +166,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const calFormatBadge     = $('calFormatBadge');
   const calOffset          = $('calOffset');
   const calOffsetValue     = $('calOffsetValue');
+  const calHeaderOffset    = $('calHeaderOffset');
+  const calHeaderOffsetValue = $('calHeaderOffsetValue');
+  const calFooterOffset    = $('calFooterOffset');
+  const calFooterOffsetValue = $('calFooterOffsetValue');
   const calTitleOffset     = $('calTitleOffset');
   const calTitleOffsetValue= $('calTitleOffsetValue');
+  const calHeaderLeft      = $('calHeaderLeft');
+  const calHeaderMiddle    = $('calHeaderMiddle');
+  const calHeaderRight     = $('calHeaderRight');
+  const calFooterLeft      = $('calFooterLeft');
+  const calFooterMiddle    = $('calFooterMiddle');
+  const calFooterRight     = $('calFooterRight');
+  const readerHeaderLeft   = $('readerHeaderLeft');
+  const readerHeaderMiddle = $('readerHeaderMiddle');
+  const readerHeaderRight  = $('readerHeaderRight');
+  const readerFooterMiddle = $('readerFooterMiddle');
+  const readerProgress     = $('readerProgress');
   const calGuidesBtn       = $('calGuidesBtn');
   const calAutoBtn         = $('calAutoBtn');
   const calResetBtn        = $('calResetBtn');
@@ -629,6 +649,34 @@ document.addEventListener('DOMContentLoaded', () => {
       applyPreview(item);
     });
   }
+  const bindCalibrationSlider = (el, valueEl, key) => {
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      const value = Number(el.value) || 0;
+      state.calibration = { ...calibrationFor(item), itemId: item.id, [key]: value };
+      if (valueEl) valueEl.textContent = `${value > 0 ? '+' : ''}${value}`;
+      applyPreview(item);
+    });
+  };
+  bindCalibrationSlider(calHeaderOffset, calHeaderOffsetValue, 'headerOffset');
+  bindCalibrationSlider(calFooterOffset, calFooterOffsetValue, 'footerOffset');
+  const bindTipInput = (el, key) => {
+    if (!el) return;
+    el.addEventListener('change', () => {
+      const item = state.queue.find(q => q.id === state.activeId);
+      if (!item) return;
+      state.calibration = { ...calibrationFor(item), itemId: item.id, [key]: el.value.trim() };
+      applyPreview(item);
+    });
+  };
+  bindTipInput(calHeaderLeft, 'headerLeft');
+  bindTipInput(calHeaderMiddle, 'headerMiddle');
+  bindTipInput(calHeaderRight, 'headerRight');
+  bindTipInput(calFooterLeft, 'footerLeft');
+  bindTipInput(calFooterMiddle, 'footerMiddle');
+  bindTipInput(calFooterRight, 'footerRight');
   if (calGuidesBtn) {
     calGuidesBtn.addEventListener('click', () => {
       const item = state.queue.find(q => q.id === state.activeId);
@@ -641,7 +689,11 @@ document.addEventListener('DOMContentLoaded', () => {
     calResetBtn.addEventListener('click', () => {
       const item = state.queue.find(q => q.id === state.activeId);
       if (!item) return;
-      state.calibration = { itemId: item.id, offset: 0, titleOffset: 0, guides: true };
+      state.calibration = {
+        itemId: item.id, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+        headerLeft: '', headerMiddle: '', headerRight: '',
+        footerLeft: '', footerMiddle: '', footerRight: '', guides: true
+      };
       applyPreview(item);
     });
   }
@@ -2335,7 +2387,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Apply Preview to Phone Mockup ─────────────────────────────────
   function calibrationFor(item) {
     if (!item || state.calibration.itemId !== item.id) {
-      return { itemId: item ? item.id : null, offset: 0, titleOffset: 0, guides: true };
+      return {
+        itemId: item ? item.id : null, offset: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
+        headerLeft: '', headerMiddle: '', headerRight: '',
+        footerLeft: '', footerMiddle: '', footerRight: '',
+        guides: true
+      };
     }
     return state.calibration;
   }
@@ -2392,10 +2449,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const footerBottom = isRed ? l.footerPaddingBottom : rc.footerPaddingBottom;
     const cal = calibrationFor(item);
 
-    readerScreen.style.paddingTop = px(headerTop);
+    readerScreen.style.paddingTop = px((Number(headerTop) || 0) + (Number(cal.headerOffset) || 0));
     readerScreen.style.paddingLeft = px(bodyLeft);
     readerScreen.style.paddingRight = px(bodyRight);
-    readerScreen.style.paddingBottom = px(footerBottom);
+    readerScreen.style.paddingBottom = px((Number(footerBottom) || 0) + (Number(cal.footerOffset) || 0));
     if (readerHeader) {
       readerHeader.style.paddingTop = '0';
       readerHeader.style.paddingBottom = px(headerBottom);
@@ -2407,6 +2464,31 @@ document.addEventListener('DOMContentLoaded', () => {
     readerBody.style.transform = `translateY(${cal.offset * scale}px)`;
     readerBody.style.paddingLeft = '0';
     readerBody.style.paddingRight = '0';
+
+    const tipContext = {
+      BookName: readerData.name || item.name || '示例图书',
+      ChapterTitle: '第一章 序章',
+      Time: '09:41',
+      BatteryPercent: '90%',
+      ChapterIndex: '1',
+      ChapterSize: '12',
+      PageIndex: '12',
+      PageSize: '345',
+      ReadProgress: '4%'
+    };
+    const fillTip = template => String(template || '').replace(/\{(\w+)\}/g, (all, key) => tipContext[key] ?? all);
+    const sourceHeaderLeft = rc.customTipHeaderLeft || l.customTemplateHeaderLeft || '';
+    const sourceHeaderMiddle = rc.customTipHeaderMiddle || l.customTemplateHeaderMiddle || '';
+    const sourceHeaderRight = rc.customTipHeaderRight || l.customTemplateHeaderRight || '';
+    const sourceFooterLeft = rc.customTipFooterLeft || l.customTemplateFooterLeft || '';
+    const sourceFooterMiddle = rc.customTipFooterMiddle || l.customTemplateFooterMiddle || '';
+    const sourceFooterRight = rc.customTipFooterRight || l.customTemplateFooterRight || '';
+    if (readerHeaderLeft) readerHeaderLeft.textContent = fillTip(cal.headerLeft || sourceHeaderLeft || '{ChapterTitle}');
+    if (readerHeaderMiddle) readerHeaderMiddle.textContent = fillTip(cal.headerMiddle || sourceHeaderMiddle);
+    if (readerHeaderRight) readerHeaderRight.textContent = fillTip(cal.headerRight || sourceHeaderRight || '{Time}');
+    if (readerBookName) readerBookName.textContent = fillTip(cal.footerLeft || sourceFooterLeft || '{BookName}');
+    if (readerFooterMiddle) readerFooterMiddle.textContent = fillTip(cal.footerMiddle || sourceFooterMiddle);
+    if (readerProgress) readerProgress.textContent = fillTip(cal.footerRight || sourceFooterRight || '{PageIndex}/{PageSize}  {ReadProgress}');
 
     const bgBlob = isNight && readerData.bgDarkBlob ? readerData.bgDarkBlob : readerData.bgBlob;
     const focusKey = bgBlob ? `${bgBlob.size}:${isNight ? 'n' : 'd'}` : '';
@@ -2446,6 +2528,8 @@ document.addEventListener('DOMContentLoaded', () => {
       addLine(readerData._focus.top, '背景焦点上', 'focus');
       addLine(readerData._focus.bottom, '背景焦点下', 'focus');
     }
+    const headerRect = readerHeader ? readerHeader.getBoundingClientRect() : null;
+    if (headerRect) addLine((headerRect.top - screenRect.top) / screenRect.height, '页眉');
     const titleRect = readerTitleText ? readerTitleText.getBoundingClientRect() : null;
     if (titleRect) addLine((titleRect.top - screenRect.top) / screenRect.height, '标题');
     const p1 = $('readerPara1');
@@ -2458,7 +2542,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateCalibrationUI(item) {
     if (!layoutCalibration) return;
     const cal = calibrationFor(item);
-    state.calibration = { itemId: item ? item.id : null, offset: cal.offset, titleOffset: cal.titleOffset, guides: cal.guides };
+    state.calibration = { ...cal, itemId: item ? item.id : null };
     if (calFormatBadge) {
       const sourceLabel = (item && item.sourceFormat ? item.sourceFormat : 'auto').toUpperCase();
       const targetLabel = (FORMAT_META[state.exportFormat] || FORMAT_META.md3).label.toUpperCase();
@@ -2468,6 +2552,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (calOffsetValue) calOffsetValue.textContent = `${cal.offset > 0 ? '+' : ''}${cal.offset}`;
     if (calTitleOffset) calTitleOffset.value = String(cal.titleOffset);
     if (calTitleOffsetValue) calTitleOffsetValue.textContent = `${cal.titleOffset > 0 ? '+' : ''}${cal.titleOffset}`;
+    if (calHeaderOffset) calHeaderOffset.value = String(cal.headerOffset);
+    if (calHeaderOffsetValue) calHeaderOffsetValue.textContent = `${cal.headerOffset > 0 ? '+' : ''}${cal.headerOffset}`;
+    if (calFooterOffset) calFooterOffset.value = String(cal.footerOffset);
+    if (calFooterOffsetValue) calFooterOffsetValue.textContent = `${cal.footerOffset > 0 ? '+' : ''}${cal.footerOffset}`;
+    if (calHeaderLeft) calHeaderLeft.value = cal.headerLeft || '';
+    if (calHeaderMiddle) calHeaderMiddle.value = cal.headerMiddle || '';
+    if (calHeaderRight) calHeaderRight.value = cal.headerRight || '';
+    if (calFooterLeft) calFooterLeft.value = cal.footerLeft || '';
+    if (calFooterMiddle) calFooterMiddle.value = cal.footerMiddle || '';
+    if (calFooterRight) calFooterRight.value = cal.footerRight || '';
     if (calGuidesBtn) calGuidesBtn.classList.toggle('is-active', cal.guides);
     if (calNote) {
       const focus = item && item.parsedReader && item.parsedReader._focus;
@@ -3159,10 +3253,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function applyCalibrationToReadConfig(cfg, item) {
     if (!cfg || !item || state.calibration.itemId !== item.id) return cfg;
-    const offset = Number(state.calibration.offset) || 0;
-    const titleOffset = Number(state.calibration.titleOffset) || 0;
+    const cal = state.calibration;
+    const offset = Number(cal.offset) || 0;
+    const titleOffset = Number(cal.titleOffset) || 0;
+    const headerOffset = Number(cal.headerOffset) || 0;
+    const footerOffset = Number(cal.footerOffset) || 0;
     if (offset) cfg.paddingTop = Math.max(0, Number(cfg.paddingTop || 0) + offset);
     if (titleOffset) cfg.titleTopSpacing = Math.max(0, Number(cfg.titleTopSpacing || 0) + titleOffset);
+    if (headerOffset) cfg.headerPaddingTop = Math.max(0, Number(cfg.headerPaddingTop || 0) + headerOffset);
+    if (footerOffset) cfg.footerPaddingBottom = Math.max(0, Number(cfg.footerPaddingBottom || 0) + footerOffset);
+    const tipFields = [
+      ['HeaderLeft', 'headerLeft'], ['HeaderMiddle', 'headerMiddle'], ['HeaderRight', 'headerRight'],
+      ['FooterLeft', 'footerLeft'], ['FooterMiddle', 'footerMiddle'], ['FooterRight', 'footerRight']
+    ];
+    const customType = 18; // ReadTipType.tipCustom
+    for (const [suffix, key] of tipFields) {
+      const value = String(cal[key] || '').trim();
+      if (!value) continue;
+      cfg[`customTip${suffix}`] = value;
+      cfg[`tip${suffix}`] = customType;
+    }
     return cfg;
   }
 
