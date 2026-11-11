@@ -1287,14 +1287,62 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Some RED v2 schemas are large and contain deeply escaped CSS, which can
+    // break JSON.parse even when the braces balance. Recover their core fields
+    // directly from the raw text so colors do not fall back to gray defaults.
+    const looseString = (slice, key) => {
+      const marker = `"${key}":"`;
+      const p = slice.indexOf(marker);
+      if (p < 0) return null;
+      let i = p + marker.length;
+      let out = '';
+      while (i < slice.length) {
+        const ch = slice[i];
+        if (ch === '\\') { out += ch + (slice[i + 1] || ''); i += 2; continue; }
+        if (ch === '"') break;
+        out += ch;
+        i++;
+      }
+      try { return JSON.parse(`"${out}"`); } catch (e) { return out; }
+    };
+    const looseReaderSchemas = [];
+    let looseCursor = 0;
+    while ((looseCursor = text.indexOf('"backgroundImageUrl"', looseCursor)) !== -1) {
+      const start = text.lastIndexOf('{"name"', looseCursor);
+      if (start >= 0) {
+        const slice = text.slice(start, Math.min(start + 5000000, text.length));
+        const bg = looseString(slice, 'backgroundImageUrl');
+        const textColor = looseString(slice, 'textColor');
+        const layoutRaw = looseString(slice, 'layoutConfig');
+        if (bg && textColor && layoutRaw) {
+          let layout = null;
+          try { layout = JSON.parse(layoutRaw); } catch (e) {}
+          if (layout && typeof layout === 'object' && !looseReaderSchemas.some(s => s.backgroundImageUrl === bg)) {
+            looseReaderSchemas.push({
+              name: looseString(slice, 'name') || '',
+              backgroundColor: looseString(slice, 'backgroundColor'),
+              textColor,
+              primaryColor: looseString(slice, 'primaryColor'),
+              backgroundImageUrl: bg,
+              themeMode: looseString(slice, 'themeMode') || 'common',
+              layoutConfig: layout
+            });
+          }
+        }
+      }
+      looseCursor += 20;
+    }
+
     let themeMeta = null;
-    const readerSchemas = [];
+    const readerSchemas = [...looseReaderSchemas];
     for (const s of schemas) {
       if (!s || typeof s !== 'object') continue;
       if (s.light && typeof s.light === 'object' && s.light.primaryColor) {
         themeMeta = s;
       } else if (s.layoutConfig && s.backgroundImageUrl && s.textColor) {
-        readerSchemas.push(s);
+        if (!readerSchemas.some(existing => existing.backgroundImageUrl === s.backgroundImageUrl)) {
+          readerSchemas.push(s);
+        }
       }
     }
 
@@ -2455,7 +2503,7 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryColor: toCssColor(p.primary, isNight ? '#9CB09D' : '#8A9E8B'),
       tabBackgroundColor: toCssColor(p.card, isNight ? '#2C343A' : '#FFFFFF'),
       themeName: name,
-      titleFontColor: toCssColor(p.muted, isNight ? '#B0A89E' : '#645C4D'),
+      titleFontColor: toCssColor(readableTextColor(p.foreground, p.background, isNight ? '#E8E4DE' : '#2C2A27'), isNight ? '#E8E4DE' : '#2C2A27'),
       titleFontPath: fontName || '',
       transparentNavBar: true,
       uiCornerReplyFollow: true,
