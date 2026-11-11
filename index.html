@@ -301,56 +301,14 @@
 
       <div class="layout-calibration" id="layoutCalibration" style="display:none">
         <div class="cal-head">
-          <span><i class="fa-solid fa-ruler-combined"></i> 排版校准</span>
-          <span class="cal-format" id="calFormatBadge">MD3</span>
+          <span><i class="fa-solid fa-wand-magic-sparkles"></i> 自动排版校准</span>
+          <span class="cal-format" id="calFormatBadge">源 → MD3</span>
         </div>
-        <div class="cal-grid">
-          <label class="cal-slider">
-            <span>页眉位置</span>
-            <input type="range" id="calHeaderOffset" min="-80" max="80" step="1" value="0">
-            <b id="calHeaderOffsetValue">0</b>
-          </label>
-          <label class="cal-slider">
-            <span>页脚位置</span>
-            <input type="range" id="calFooterOffset" min="-80" max="80" step="1" value="0">
-            <b id="calFooterOffsetValue">0</b>
-          </label>
-          <label class="cal-slider">
-            <span>标题间距</span>
-            <input type="range" id="calTitleOffset" min="-40" max="40" step="1" value="0">
-            <b id="calTitleOffsetValue">0</b>
-          </label>
-          <label class="cal-slider">
-            <span>正文上边距</span>
-            <input type="range" id="calOffset" min="-80" max="80" step="1" value="0">
-            <b id="calOffsetValue">0</b>
-          </label>
-          <label class="cal-slider">
-            <span>正文下边距</span>
-            <input type="range" id="calBodyBottomOffset" min="-80" max="120" step="1" value="0">
-            <b id="calBodyBottomOffsetValue">0</b>
-          </label>
+        <div class="cal-targets" id="calTargets">
+          <button type="button" class="active" data-preview-target="md3">MD3 预览</button>
+          <button type="button" data-preview-target="archive">Archive 预览</button>
         </div>
-        <div class="cal-tips">
-          <div class="cal-tip-title">页眉信息 <small>支持 {ChapterTitle} {BookName} {Time}</small></div>
-          <div class="cal-tip-grid">
-            <input id="calHeaderLeft" placeholder="左：{ChapterTitle}">
-            <input id="calHeaderMiddle" placeholder="中：留空">
-            <input id="calHeaderRight" placeholder="右：{Time}">
-          </div>
-          <div class="cal-tip-title">页脚信息 <small>支持 {PageIndex} {PageSize} {ReadProgress}</small></div>
-          <div class="cal-tip-grid">
-            <input id="calFooterLeft" placeholder="左：{BookName}">
-            <input id="calFooterMiddle" placeholder="中：留空">
-            <input id="calFooterRight" placeholder="右：{PageIndex}/{PageSize}">
-          </div>
-        </div>
-        <div class="cal-actions">
-          <button type="button" id="calGuidesBtn"><i class="fa-solid fa-border-all"></i> 参考线</button>
-          <button type="button" id="calAutoBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> 对齐背景焦点</button>
-          <button type="button" id="calResetBtn">重置</button>
-        </div>
-        <p class="cal-note" id="calNote">页眉页脚文字留空时保留源文件信息类型。</p>
+        <p class="cal-note" id="calNote">按目标格式自动换算页眉、页脚、标题、正文上下位置；参考线用于核对转换结果。</p>
       </div>
 
       <!-- Phone Mockup -->

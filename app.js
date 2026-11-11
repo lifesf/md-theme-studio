@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     batchMode: 'full',
     exportFormat: 'md3', // 'md3' | 'archive' | 'reeden'
     reedenPair: { uiId: null, readerId: null },
+    previewTarget: 'md3',
     calibration: {
       itemId: null, offset: 0, bodyBottom: 0, titleOffset: 0, headerOffset: 0, footerOffset: 0,
       headerLeft: '', headerMiddle: '', headerRight: '',
@@ -164,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readerGuides       = $('readerGuides');
   const layoutCalibration  = $('layoutCalibration');
   const calFormatBadge     = $('calFormatBadge');
+  const calTargets         = $('calTargets');
   const calOffset          = $('calOffset');
   const calOffsetValue     = $('calOffsetValue');
   const calBodyBottomOffset = $('calBodyBottomOffset');
@@ -633,6 +635,18 @@ document.addEventListener('DOMContentLoaded', () => {
     reedenAddFilesBtn.addEventListener('click', () => fileInput.click());
   }
 
+  if (calTargets) {
+    calTargets.querySelectorAll('[data-preview-target]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.previewTarget = btn.dataset.previewTarget === 'archive' ? 'archive' : 'md3';
+        calTargets.querySelectorAll('[data-preview-target]').forEach(b => {
+          b.classList.toggle('active', b.dataset.previewTarget === state.previewTarget);
+        });
+        const item = state.queue.find(q => q.id === state.activeId);
+        if (item) applyPreview(item);
+      });
+    });
+  }
   if (calOffset) {
     calOffset.addEventListener('input', () => {
       const item = state.queue.find(q => q.id === state.activeId);
@@ -2436,26 +2450,77 @@ document.addEventListener('DOMContentLoaded', () => {
     return { top: top / h, bottom: bottom / h };
   }
 
+  function getPreviewReadConfig(item, target) {
+    const r = item && item.parsedReader;
+    if (!r) return {};
+    const src = r.readConfig || {};
+    if (target === 'archive') {
+      if (r.sourceFormat === 'archive' && r.readConfig) return src;
+      return buildArchiveReadConfig(r, getItemExportName(item), '', '');
+    }
+    if (r.sourceFormat === 'md3' && r.readConfig) return src;
+    if (r.sourceFormat === 'reeden') {
+      const m = redLayoutMetrics(r.layoutConfig || {});
+      return {
+        textSize: m.fontSize,
+        lineSpacingExtra: m.lineSpacing,
+        paragraphSpacing: m.paragraphSpacing,
+        letterSpacing: m.letterSpacing,
+        paddingTop: m.paddingTop,
+        paddingBottom: m.paddingBottom,
+        paddingLeft: m.paddingLeft,
+        paddingRight: m.paddingRight,
+        titleSize: m.titleSize,
+        titleTopSpacing: m.titleTop,
+        titleBottomSpacing: m.titleBottom,
+        headerPaddingTop: m.headerTop,
+        headerPaddingBottom: m.headerBottom,
+        headerPaddingLeft: m.headerLeft,
+        headerPaddingRight: m.headerRight,
+        footerPaddingTop: m.footerTopPad,
+        footerPaddingBottom: m.footerBottomPad,
+        footerPaddingLeft: m.footerLeft,
+        footerPaddingRight: m.footerRight,
+        headerMode: m.headerMode,
+        textColor: r.textColor
+      };
+    }
+    if (r.sourceFormat === 'archive') {
+      const body = Number(src.textSize) || 16;
+      return { ...src, titleSize: body + (Number(src.titleSize) || 0) };
+    }
+    return src;
+  }
+
   async function applyReaderGeometry(item, readerData, isNight) {
     if (!readerData) return;
-    const rc = readerData.readConfig || {};
-    const l = readerData.layoutConfig || {};
-    const isRed = item.sourceFormat === 'reeden';
+    const cfg = getPreviewReadConfig(item, state.previewTarget);
     const scale = 0.55;
     const px = value => `${Math.max(0, Number(value) || 0) * scale}px`;
-    const headerTop = isRed ? l.headerPaddingTop : rc.headerPaddingTop;
-    const headerBottom = isRed ? l.headerPaddingBottom : rc.headerPaddingBottom;
-    const bodyLeft = isRed ? l.paddingLeft : rc.paddingLeft;
-    const bodyRight = isRed ? l.paddingRight : rc.paddingRight;
-    const titleTop = isRed ? l.titleMarginTop : rc.titleTopSpacing;
-    const titleBottom = isRed ? l.titlePaddingBottom : rc.titleBottomSpacing;
-    const footerBottom = isRed ? l.footerPaddingBottom : rc.footerPaddingBottom;
-    const cal = calibrationFor(item);
+    const fontSize = Number(cfg.textSize ?? cfg.fontSize) || 16;
+    const lineSpacing = Number(cfg.lineSpacingExtra ?? cfg.lineSpacing) || 14;
+    const titleSize = state.previewTarget === 'archive'
+      ? fontSize + (Number(cfg.titleSize) || 0)
+      : (Number(cfg.titleSize) || fontSize + 2);
+    readerBody.style.fontSize = `${Math.min(Math.max(fontSize * 0.72, 10), 18)}px`;
+    readerBody.style.lineHeight = (1.35 + lineSpacing / 30).toFixed(2);
+    if (cfg.textColor) readerScreen.style.color = String(cfg.textColor).replace(/^#FF/i, '#');
+    if (readerTitleText) readerTitleText.style.fontSize = `${Math.min(Math.max(titleSize * 0.72, 12), 22)}px`;
+    const headerTop = cfg.headerPaddingTop;
+    const headerBottom = cfg.headerPaddingBottom;
+    const bodyTop = cfg.paddingTop;
+    const bodyBottom = cfg.paddingBottom;
+    const bodyLeft = cfg.paddingLeft;
+    const bodyRight = cfg.paddingRight;
+    const titleTop = cfg.titleTopSpacing;
+    const titleBottom = cfg.titleBottomSpacing;
+    const footerTop = cfg.footerPaddingTop;
+    const footerBottom = cfg.footerPaddingBottom;
 
-    readerScreen.style.paddingTop = px((Number(headerTop) || 0) + (Number(cal.headerOffset) || 0));
+    readerScreen.style.paddingTop = px(headerTop);
     readerScreen.style.paddingLeft = px(bodyLeft);
     readerScreen.style.paddingRight = px(bodyRight);
-    readerScreen.style.paddingBottom = px((Number(footerBottom) || 0) + (Number(cal.footerOffset) || 0));
+    readerScreen.style.paddingBottom = px(footerBottom);
     if (readerHeader) {
       readerHeader.style.paddingTop = '0';
       readerHeader.style.paddingBottom = px(headerBottom);
@@ -2464,10 +2529,11 @@ document.addEventListener('DOMContentLoaded', () => {
       readerTitleText.style.marginTop = px(titleTop);
       readerTitleText.style.marginBottom = px(titleBottom);
     }
-    readerBody.style.transform = `translateY(${cal.offset * scale}px)`;
+    readerBody.style.transform = 'none';
+    readerBody.style.paddingTop = px(bodyTop);
+    readerBody.style.paddingBottom = px(bodyBottom);
     readerBody.style.paddingLeft = '0';
     readerBody.style.paddingRight = '0';
-    readerBody.style.paddingBottom = px(cal.bodyBottom);
 
     const tipContext = {
       BookName: readerData.name || item.name || '示例图书',
@@ -2481,18 +2547,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ReadProgress: '4%'
     };
     const fillTip = template => String(template || '').replace(/\{(\w+)\}/g, (all, key) => tipContext[key] ?? all);
-    const sourceHeaderLeft = rc.customTipHeaderLeft || l.customTemplateHeaderLeft || '';
-    const sourceHeaderMiddle = rc.customTipHeaderMiddle || l.customTemplateHeaderMiddle || '';
-    const sourceHeaderRight = rc.customTipHeaderRight || l.customTemplateHeaderRight || '';
-    const sourceFooterLeft = rc.customTipFooterLeft || l.customTemplateFooterLeft || '';
-    const sourceFooterMiddle = rc.customTipFooterMiddle || l.customTemplateFooterMiddle || '';
-    const sourceFooterRight = rc.customTipFooterRight || l.customTemplateFooterRight || '';
-    if (readerHeaderLeft) readerHeaderLeft.textContent = fillTip(cal.headerLeft || sourceHeaderLeft || '{ChapterTitle}');
-    if (readerHeaderMiddle) readerHeaderMiddle.textContent = fillTip(cal.headerMiddle || sourceHeaderMiddle);
-    if (readerHeaderRight) readerHeaderRight.textContent = fillTip(cal.headerRight || sourceHeaderRight || '{Time}');
-    if (readerBookName) readerBookName.textContent = fillTip(cal.footerLeft || sourceFooterLeft || '{BookName}');
-    if (readerFooterMiddle) readerFooterMiddle.textContent = fillTip(cal.footerMiddle || sourceFooterMiddle);
-    if (readerProgress) readerProgress.textContent = fillTip(cal.footerRight || sourceFooterRight || '{PageIndex}/{PageSize}  {ReadProgress}');
+    const sourceHeaderLeft = cfg.customTipHeaderLeft || '';
+    const sourceHeaderMiddle = cfg.customTipHeaderMiddle || '';
+    const sourceHeaderRight = cfg.customTipHeaderRight || '';
+    const sourceFooterLeft = cfg.customTipFooterLeft || '';
+    const sourceFooterMiddle = cfg.customTipFooterMiddle || '';
+    const sourceFooterRight = cfg.customTipFooterRight || '';
+    if (readerHeaderLeft) readerHeaderLeft.textContent = fillTip(sourceHeaderLeft || '{ChapterTitle}');
+    if (readerHeaderMiddle) readerHeaderMiddle.textContent = fillTip(sourceHeaderMiddle);
+    if (readerHeaderRight) readerHeaderRight.textContent = fillTip(sourceHeaderRight || '{Time}');
+    if (readerBookName) readerBookName.textContent = fillTip(sourceFooterLeft || '{BookName}');
+    if (readerFooterMiddle) readerFooterMiddle.textContent = fillTip(sourceFooterMiddle);
+    if (readerProgress) readerProgress.textContent = fillTip(sourceFooterRight || '{PageIndex}/{PageSize}  {ReadProgress}');
 
     const bgBlob = isNight && readerData.bgDarkBlob ? readerData.bgDarkBlob : readerData.bgBlob;
     const focusKey = bgBlob ? `${bgBlob.size}:${isNight ? 'n' : 'd'}` : '';
@@ -2504,10 +2570,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const center = Math.round(((readerData._focus.top + readerData._focus.bottom) / 2) * 100);
       readerScreen.style.backgroundPosition = `50% ${center}%`;
     }
-    state.calibration.itemId = item.id;
-    state.calibration.offset = cal.offset;
-    state.calibration.titleOffset = cal.titleOffset;
-    state.calibration.guides = cal.guides;
     renderReaderGuides(item, readerData);
     requestAnimationFrame(() => renderReaderGuides(item, readerData));
     updateCalibrationUI(item);
@@ -2545,35 +2607,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateCalibrationUI(item) {
     if (!layoutCalibration) return;
-    const cal = calibrationFor(item);
-    state.calibration = { ...cal, itemId: item ? item.id : null };
-    if (calFormatBadge) {
-      const sourceLabel = (item && item.sourceFormat ? item.sourceFormat : 'auto').toUpperCase();
-      const targetLabel = (FORMAT_META[state.exportFormat] || FORMAT_META.md3).label.toUpperCase();
-      calFormatBadge.textContent = `${sourceLabel} → ${targetLabel}`;
+    const sourceLabel = (item && item.sourceFormat ? item.sourceFormat : 'auto').toUpperCase();
+    const targetLabel = state.previewTarget === 'archive' ? 'ARCHIVE' : 'MD3';
+    if (calFormatBadge) calFormatBadge.textContent = `${sourceLabel} → ${targetLabel}`;
+    if (calTargets) {
+      calTargets.querySelectorAll('[data-preview-target]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.previewTarget === state.previewTarget);
+      });
     }
-    if (calOffset) calOffset.value = String(cal.offset);
-    if (calOffsetValue) calOffsetValue.textContent = `${cal.offset > 0 ? '+' : ''}${cal.offset}`;
-    if (calBodyBottomOffset) calBodyBottomOffset.value = String(cal.bodyBottom || 0);
-    if (calBodyBottomOffsetValue) calBodyBottomOffsetValue.textContent = `${(cal.bodyBottom || 0) > 0 ? '+' : ''}${cal.bodyBottom || 0}`;
-    if (calTitleOffset) calTitleOffset.value = String(cal.titleOffset);
-    if (calTitleOffsetValue) calTitleOffsetValue.textContent = `${cal.titleOffset > 0 ? '+' : ''}${cal.titleOffset}`;
-    if (calHeaderOffset) calHeaderOffset.value = String(cal.headerOffset);
-    if (calHeaderOffsetValue) calHeaderOffsetValue.textContent = `${cal.headerOffset > 0 ? '+' : ''}${cal.headerOffset}`;
-    if (calFooterOffset) calFooterOffset.value = String(cal.footerOffset);
-    if (calFooterOffsetValue) calFooterOffsetValue.textContent = `${cal.footerOffset > 0 ? '+' : ''}${cal.footerOffset}`;
-    if (calHeaderLeft) calHeaderLeft.value = cal.headerLeft || '';
-    if (calHeaderMiddle) calHeaderMiddle.value = cal.headerMiddle || '';
-    if (calHeaderRight) calHeaderRight.value = cal.headerRight || '';
-    if (calFooterLeft) calFooterLeft.value = cal.footerLeft || '';
-    if (calFooterMiddle) calFooterMiddle.value = cal.footerMiddle || '';
-    if (calFooterRight) calFooterRight.value = cal.footerRight || '';
-    if (calGuidesBtn) calGuidesBtn.classList.toggle('is-active', cal.guides);
     if (calNote) {
       const focus = item && item.parsedReader && item.parsedReader._focus;
       calNote.textContent = focus
-        ? `背景焦点 ${Math.round(focus.top * 100)}%–${Math.round(focus.bottom * 100)}%，拖动滑块校准正文块。`
-        : '参考线用于对齐背景主体、标题和正文位置。';
+        ? `已按 ${targetLabel} 排版字段自动换算；背景焦点 ${Math.round(focus.top * 100)}%–${Math.round(focus.bottom * 100)}%。`
+        : `已按 ${targetLabel} 排版字段自动换算页眉、页脚、标题和正文位置。`;
     }
     if (state.activeTab !== 'reader') layoutCalibration.style.display = 'none';
   }
@@ -3187,7 +3233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const src = r.readConfig || {};
     const l = r.layoutConfig || {};
     const red = r.sourceFormat === 'reeden' ? redLayoutMetrics(l) : null;
-    const bodySize = red ? red.fontSize : Number(src.textSize ?? l.fontSize ?? 16);
+    const bodySize = red ? red.fontSize : Number(src.textSize ?? l.fontSize ?? 24);
     const titleDelta = r.sourceFormat === 'archive'
       ? Math.max(0, Number(src.titleSize ?? 4))
       : red
@@ -3205,29 +3251,28 @@ document.addEventListener('DOMContentLoaded', () => {
       darkStatusIconEInk: true,
       darkStatusIconNight: false,
       footerMode: Number(src.footerMode ?? 0),
-      footerPaddingBottom: Number(src.footerPaddingBottom ?? 12),
-      footerPaddingLeft: Number(src.footerPaddingLeft ?? 19),
-      footerPaddingRight: Number(src.footerPaddingRight ?? 25),
-      footerPaddingTop: Number(src.footerPaddingTop ?? 6),
+      footerPaddingBottom: Number(src.footerPaddingBottom ?? 10),
+      footerPaddingLeft: Number(src.footerPaddingLeft ?? 13),
+      footerPaddingRight: Number(src.footerPaddingRight ?? 17),
+      footerPaddingTop: Number(src.footerPaddingTop ?? 0),
       headerMode: red ? 1 : Number(src.headerMode ?? 0),
       headerPaddingBottom: Number(src.headerPaddingBottom ?? 0),
-      headerPaddingLeft: Number(src.headerPaddingLeft ?? 16),
+      headerPaddingLeft: Number(src.headerPaddingLeft ?? 19),
       headerPaddingRight: Number(src.headerPaddingRight ?? 16),
-      headerPaddingTop: Number(src.headerPaddingTop ?? 16),
-      letterSpacing: red ? red.letterSpacing : nonNegative(src.letterSpacing ?? l.letterSpacing, 0.1),
-      lineSpacingExtra: red ? red.lineSpacing : nonNegative(src.lineSpacingExtra ?? l.lineSpacing, 12),
+      headerPaddingTop: Number(src.headerPaddingTop ?? 10),
+      letterSpacing: red ? red.letterSpacing : nonNegative(src.letterSpacing ?? l.letterSpacing, 0),
+      lineSpacingExtra: red ? red.lineSpacing : nonNegative(src.lineSpacingExtra ?? l.lineSpacing, 10),
       name,
-      paddingBottom: red ? red.paddingBottom : nonNegative(src.paddingBottom ?? l.paddingBottom, 19),
-      paddingLeft: red ? red.paddingLeft : nonNegative(src.paddingLeft ?? l.paddingLeft, 16),
-      paddingRight: red ? red.paddingRight : nonNegative(src.paddingRight ?? l.paddingRight, 16),
-      // Archive reserves a 26px status/top inset before the content padding.
-      paddingTop: red ? red.paddingTop + 26 : nonNegative(src.paddingTop ?? l.paddingTop, 37) + 26,
+      paddingBottom: red ? red.paddingBottom : nonNegative(src.paddingBottom ?? l.paddingBottom, 4),
+      paddingLeft: red ? red.paddingLeft : nonNegative(src.paddingLeft ?? l.paddingLeft, 22),
+      paddingRight: red ? red.paddingRight : nonNegative(src.paddingRight ?? l.paddingRight, 22),
+      paddingTop: red ? red.paddingTop : nonNegative(src.paddingTop ?? l.paddingTop, 5),
       pageAnim: Number(src.pageAnim ?? 2),
       pageAnimEInk: 4,
       paperEffect: false,
       paperInkStrength: 0,
       paragraphIndent: legadoParagraphIndent(src.paragraphIndent || l.paragraphIndent),
-      paragraphSpacing: red ? red.paragraphSpacing : nonNegative(src.paragraphSpacing ?? l.paragraphSpacing, 2),
+      paragraphSpacing: red ? red.paragraphSpacing : nonNegative(src.paragraphSpacing ?? l.paragraphSpacing, 6),
       readScrollFollowBackground: false,
       readScrollFollowBackgroundEInk: false,
       readScrollFollowBackgroundNight: false,
@@ -3236,7 +3281,11 @@ document.addEventListener('DOMContentLoaded', () => {
       textAccentColor: toArgbHex(r.primaryColor || src.textAccentColor, '#FF834E00'),
       textAccentColorEInk: '#000000',
       textAccentColorNight: toArgbHex(r.primaryColorNight || src.textAccentColorNight, '#FFFE4D55'),
-      textBold: Number(src.textBold ?? 500),
+      textBold: (() => {
+        const raw = Number(src.textBold ?? 0);
+        if (r.sourceFormat === 'archive') return raw;
+        return raw >= 700 ? 1 : raw <= 300 ? 2 : 0;
+      })(),
       textColor: toArgbHex(r.textColor || src.textColor, '#FF2B241B'),
       textColorEInk: '#000000',
       textColorNight: toArgbHex(r.textColorNight || src.textColorNight, '#FFADADAD'),
@@ -3250,8 +3299,8 @@ document.addEventListener('DOMContentLoaded', () => {
       tipHeaderLeft: 0,
       tipHeaderMiddle: 0,
       tipHeaderRight: 0,
-      titleBottomSpacing: red ? red.titleBottom : nonNegative(src.titleBottomSpacing ?? l.titleBottomSpacing, 26),
-      titleMode: red ? red.titleMode : ([0, 1, 2].includes(Number(src.titleMode)) ? Number(src.titleMode) : 1),
+      titleBottomSpacing: red ? red.titleBottom : nonNegative(src.titleBottomSpacing ?? l.titleBottomSpacing, 0),
+      titleMode: red ? red.titleMode : ([0, 1, 2].includes(Number(src.titleMode)) ? Number(src.titleMode) : 0),
       titleSize: titleDelta,
       titleTopSpacing: red ? red.titleTop : nonNegative(src.titleTopSpacing ?? l.titleTopSpacing, 0),
       underlineDashLength: 6.0,
