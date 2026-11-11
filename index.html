@@ -92,8 +92,8 @@
           </button>
         </div>
 
-        <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="选择或拖入主题文件">
-          <input type="file" id="fileInput" multiple accept=".red,.zip,.rgshare,.rgtheme,.rg" style="display:none">
+        <input type="file" id="fileInput" class="visually-hidden-file" multiple accept=".red,.zip,.rgshare,.rgtheme,.rg">
+        <label class="drop-zone" id="dropZone" for="fileInput" tabindex="0" aria-label="选择或拖入主题文件">
           <div class="drop-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
           <p class="drop-title">拖入主题文件，或点击选择</p>
           <p class="drop-sub">自动识别主题包 / 排版包，可多选批量转换</p>
@@ -102,7 +102,7 @@
             <span class="fmt-tag"><i class="fa-solid fa-tag"></i> .rgshare</span>
             <span class="fmt-tag"><i class="fa-solid fa-tag"></i> .zip</span>
           </div>
-        </div>
+        </label>
 
         <!-- File Queue -->
         <div class="queue" id="queueList"></div>

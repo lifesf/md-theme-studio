@@ -631,7 +631,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── File Drag & Drop ─────────────────────────────────────────────
-  dropZone.addEventListener('click', () => fileInput.click());
+  // Clicking the drop zone is handled natively by <label for="fileInput">.
+  // Do not also call fileInput.click() here, or mobile browsers open twice.
   dropZone.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();

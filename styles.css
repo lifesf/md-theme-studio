@@ -314,7 +314,22 @@ button { font-family: var(--font); cursor: pointer; border: none; background: no
 }
 
 /* ── Drop Zone ───────────────────────────────────────────────── */
+.visually-hidden-file {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .drop-zone {
+  display: block;
   border: 2px dashed var(--border-mid);
   border-radius: var(--r-md);
   padding: 28px 20px;
